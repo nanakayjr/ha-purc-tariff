@@ -112,11 +112,14 @@ You can add the integration multiple times with different customer categories if
 
 ## Energy Dashboard
 
-To use the tariff sensors as a dynamic price entity in the [Energy Dashboard](https://www.home-assistant.io/docs/energy/):
+To use a tariff sensor as a dynamic price entity in the [Energy Dashboard](https://www.home-assistant.io/docs/energy/):
 
 1. Go to **Settings → Dashboards → Energy**.
 2. Under **Electricity grid**, edit your grid consumption source.
-3. Under "Use a static price" toggle it off, enable **Use an entity with current price**, and select the applicable tariff sensor (for example `sensor.regular_consumer_tariff`).
+3. Toggle off **Use a static price**, enable **Use an entity with current price**, and select the applicable tariff sensor (for example `sensor.regular_consumer_tariff`).
+
+> [!IMPORTANT]
+> Tariff sensors report a rate (GHS/kWh, `state_class: measurement`) — they are **not** a running total. Do **not** add them to the **"Use an entity tracking the total costs"** field; that field expects a cumulative, ever-increasing cost sensor (`state_class: total`/`total_increasing`) and will show a warning like *"has state class 'measurement' but 'last_reset' is missing"* if you do. Home Assistant itself calculates and tracks the running cost for you from the current-price entity — you only need to provide the rate.
 
 ## Diagnostics
 
@@ -135,6 +138,7 @@ Sensitive configuration values are automatically redacted.
 | Setup fails immediately | PURC website unreachable or changed layout | Check your internet connection and retry; open an issue if it persists |
 | Sensors show `unavailable` | Temporary PURC outage | The integration keeps the last known values and retries automatically every 24 hours |
 | Values seem outdated | Tariffs only refresh once a day | Reload the integration (**Settings → Devices & services → PURC Ghana Tariff → ⋮ → Reload**) to force an immediate refresh |
+| Energy Dashboard warns *"has state class 'measurement' but 'last_reset' is missing"* | A tariff sensor was set as the **cost tracking** entity instead of the **current price** entity | See [Energy Dashboard](#energy-dashboard) — use "Use an entity with current price", not "Use an entity tracking the total costs" |
 
 If you run into a persistent issue, please [open an issue](https://github.com/nanakayjr/ha-purc-tariff/issues) with the [diagnostics](#diagnostics) file attached and your Home Assistant logs (`Settings → System → Logs`, filtered to `purc_tariff`).
 
@@ -156,10 +160,3 @@ This is an unofficial, community-maintained integration. It is not affiliated wi
 ## License
 
 Released under the [MIT License](LICENSE).
-
-### HACS
-
-1. Open HACS
-2. Select Integrations
-3. Add Custom Repository
-4. Enter:
