@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PURC Tariff Reckoner</title>
+</head>
+<body>
+    <form id="form1" method="post" action="Default.aspx">
+        <input type="hidden" name="__VIEWSTATE" id="__VIEWSTATE" value="dummy-viewstate" />
+        <input type="hidden" name="__EVENTVALIDATION" id="__EVENTVALIDATION" value="dummy-eventvalidation" />
+
+        <select name="ctl00$MainContent$ddlCustomerType" id="MainContent_ddlCustomerType">
+            <option selected="selected" value="Residential">Residential</option>
+            <option value="Non-Residential">Non-Residential</option>
+        </select>
+
+        <input type="text" name="ctl00$MainContent$txtEConsmptn" id="MainContent_txtEConsmptn" value="100" />
+
+        <input type="text" name="ctl00$MainContent$txtEnergyCharge" id="MainContent_txtEnergyCharge" value="203.75" readonly="readonly" />
+        <input type="text" name="ctl00$MainContent$txtLevyTax" id="MainContent_txtLevyTax" value="10.19" readonly="readonly" />
+        <input type="text" name="ctl00$MainContent$txtESC" id="MainContent_txtESC" value="10.73" readonly="readonly" />
+        <input type="text" name="ctl00$MainContent$txtETotalAmt" id="MainContent_txtETotalAmt" value="224.67" readonly="readonly" />
+
+        <input type="submit" name="ctl00$MainContent$btnECalculate" value="CALCULATE" id="MainContent_btnECalculate" />
+    </form>
+</body>
+</html>
