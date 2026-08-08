@@ -5,7 +5,15 @@
         "title": "PURC Electricity Tariff",
         "description": "Select your PURC customer category",
         "data": {
-          "customer_type": "Customer Type"
+          "customer_type": "Customer Type",
+          "track_water_tariff": "Also track water tariffs"
+        }
+      },
+      "water": {
+        "title": "Water Tariff",
+        "description": "Select your PURC water customer category",
+        "data": {
+          "water_customer_type": "Water Customer Type"
         }
       }
     }

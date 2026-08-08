@@ -5,7 +5,7 @@ import requests
 
 from bs4 import BeautifulSoup
 
-from .const import PURC_URL
+from .const import PURC_URL, WATER_URL
 
 from .exceptions import (
     PURCConnectionError,
@@ -16,15 +16,11 @@ from .exceptions import (
 _LOGGER = logging.getLogger(__name__)
 
 
-class PURCClient:
+class _BaseClient:
+    """Shared HTTP/retry/parsing logic for the PURC tariff reckoners."""
 
 
-    def __init__(
-        self,
-        customer_type
-    ):
-
-        self.customer_type = customer_type
+    def __init__(self):
 
         self.session = requests.Session()
 
@@ -82,15 +78,11 @@ class PURCClient:
 
 
 
-    def _calculate(
-        self,
-        consumption
-    ):
-
+    def _get_form_state(self, url):
 
         try:
             page = self.session.get(
-                PURC_URL,
+                url,
                 timeout=30
             )
 
@@ -136,13 +128,99 @@ class PURCClient:
             )
 
 
+        return viewstate["value"], eventvalidation["value"]
+
+
+
+    def _post(self, url, payload):
+
+        try:
+            response = self.session.post(
+                url,
+                data=payload,
+                timeout=30
+            )
+
+        except requests.RequestException as err:
+            raise PURCConnectionError(
+                str(err)
+            ) from err
+
+        if response.status_code != 200:
+            raise PURCConnectionError(
+                f"Unexpected status code: {response.status_code}"
+            )
+
+        return response.text
+
+
+
+    @staticmethod
+    def _extract(soup, name):
+
+        field = soup.find(
+            id=f"MainContent_{name}"
+        )
+
+
+        if not field:
+            raise PURCParseError(
+                name
+            )
+
+        value = field.get("value")
+
+        if value is None:
+            raise PURCParseError(
+                f"Missing value for {name}"
+            )
+
+        normalized = value.replace(",", "").strip()
+
+        if not normalized:
+            raise PURCParseError(
+                f"Empty value for {name}"
+            )
+
+        try:
+            return float(normalized)
+
+        except ValueError as err:
+            raise PURCParseError(
+                f"Invalid numeric value for {name}: {value}"
+            ) from err
+
+
+class PURCClient(_BaseClient):
+    """Client for the electricity tariff reckoner."""
+
+
+    def __init__(
+        self,
+        customer_type
+    ):
+
+        super().__init__()
+
+        self.customer_type = customer_type
+
+
+    def _calculate(
+        self,
+        consumption
+    ):
+
+        viewstate, eventvalidation = self._get_form_state(
+            PURC_URL
+        )
+
         payload = {
 
             "__VIEWSTATE":
-                viewstate["value"],
+                viewstate,
 
             "__EVENTVALIDATION":
-                eventvalidation["value"],
+                eventvalidation,
 
 
             "ctl00$MainContent$ddlCustomerType":
@@ -162,29 +240,14 @@ class PURCClient:
         }
 
 
-
-        try:
-            response = self.session.post(
-                PURC_URL,
-                data=payload,
-                timeout=30
-            )
-
-        except requests.RequestException as err:
-            raise PURCConnectionError(
-                str(err)
-            ) from err
-
-        if response.status_code != 200:
-            raise PURCConnectionError(
-                f"Unexpected status code: {response.status_code}"
-            )
-
-
-        return self._parse(
-            response.text
+        html = self._post(
+            PURC_URL,
+            payload
         )
 
+        return self._parse(
+            html
+        )
 
 
     def _parse(
@@ -192,67 +255,131 @@ class PURCClient:
         html
     ):
 
+        soup = BeautifulSoup(
+            html,
+            "html.parser"
+        )
+
+        return {
+
+            "energy":
+                self._extract(
+                    soup,
+                    "txtEnergyCharge"
+                ),
+
+            "levy":
+                self._extract(
+                    soup,
+                    "txtLevyTax"
+                ),
+
+            "service":
+                self._extract(
+                    soup,
+                    "txtESC"
+                ),
+
+            "total":
+                self._extract(
+                    soup,
+                    "txtETotalAmt"
+                )
+        }
+
+
+class PURCWaterClient(_BaseClient):
+    """Client for the water tariff reckoner."""
+
+
+    def __init__(
+        self,
+        customer_type
+    ):
+
+        super().__init__()
+
+        self.customer_type = customer_type
+
+
+    def _calculate(
+        self,
+        consumption
+    ):
+
+        viewstate, eventvalidation = self._get_form_state(
+            WATER_URL
+        )
+
+        payload = {
+
+            "__VIEWSTATE":
+                viewstate,
+
+            "__EVENTVALIDATION":
+                eventvalidation,
+
+
+            "ctl00$MainContent$ddlWCustomerType":
+                self.customer_type,
+
+
+            "ctl00$MainContent$ddlWCompPref":
+                "Consumption (m3)",
+
+
+            "ctl00$MainContent$txtVolumeConsumed":
+                str(consumption),
+
+
+            "ctl00$MainContent$btnWCalculate":
+                "CALCULATE"
+        }
+
+
+        html = self._post(
+            WATER_URL,
+            payload
+        )
+
+        return self._parse(
+            html
+        )
+
+
+    def _parse(
+        self,
+        html
+    ):
 
         soup = BeautifulSoup(
             html,
             "html.parser"
         )
 
-
-        def extract(name):
-
-            field = soup.find(
-                id=f"MainContent_{name}"
-            )
-
-
-            if not field:
-                raise PURCParseError(
-                    name
-                )
-
-            value = field.get("value")
-
-            if value is None:
-                raise PURCParseError(
-                    f"Missing value for {name}"
-                )
-
-            normalized = value.replace(",", "").strip()
-
-            if not normalized:
-                raise PURCParseError(
-                    f"Empty value for {name}"
-                )
-
-            try:
-                return float(normalized)
-
-            except ValueError as err:
-                raise PURCParseError(
-                    f"Invalid numeric value for {name}: {value}"
-                ) from err
-
-
         return {
 
-            "energy":
-                extract(
-                    "txtEnergyCharge"
+            "charge":
+                self._extract(
+                    soup,
+                    "txtWaterCharge"
                 ),
 
             "levy":
-                extract(
-                    "txtLevyTax"
+                self._extract(
+                    soup,
+                    "txtWLevy"
                 ),
 
             "service":
-                extract(
-                    "txtESC"
+                self._extract(
+                    soup,
+                    "txtWSC"
                 ),
 
             "total":
-                extract(
-                    "txtETotalAmt"
+                self._extract(
+                    soup,
+                    "txtWTotalAmount"
                 )
         }

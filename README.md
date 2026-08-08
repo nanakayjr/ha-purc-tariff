@@ -10,6 +10,7 @@
 [![Validate](https://github.com/nanakayjr/ha-purc-tariff/actions/workflows/validate.yml/badge.svg)](https://github.com/nanakayjr/ha-purc-tariff/actions/workflows/validate.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Integration domain](https://img.shields.io/badge/domain-purc__tariff-blue)](custom_components/purc_tariff)
+[![Version](https://img.shields.io/badge/version-1.1.0-blue)](CHANGELOG.md)
 
 </div>
 
@@ -28,6 +29,7 @@
 - [Diagnostics](#diagnostics)
 - [Troubleshooting](#troubleshooting)
 - [Development](#development)
+- [Changelog](#changelog)
 - [Disclaimer](#disclaimer)
 - [License](#license)
 
@@ -41,6 +43,8 @@ This integration polls the PURC Tariff Reckoner on your behalf once a day and ex
 - Feed accurate, up-to-date cost data into the [Energy Dashboard](#energy-dashboard).
 - Build automations/notifications around tariff changes (e.g. notify when the levy or service charge changes).
 
+Optionally, it can also track water tariffs published on the same portal.
+
 ## Features
 
 - 🔎 Automatic tariff discovery directly from the official PURC Tariff Reckoner.
@@ -48,7 +52,12 @@ This integration polls the PURC Tariff Reckoner on your behalf once a day and ex
 - 💡 Lifeline tariff support for low-consumption residential customers.
 - 🧾 Levy (tax) percentage calculation.
 - 💵 Service charge extraction.
+- 💧 Optional **water tariff** tracking (GHS/m³), opt-in during setup.
 - 🔄 Configurable, automatic daily refresh with graceful fallback to the last known values if PURC's site is temporarily unavailable.
+- 🔘 **Force Update** button to refresh tariffs on demand, without waiting for the daily cycle.
+- 🕒 **Last Updated** sensor showing when tariffs were last successfully fetched.
+- 💾 Values are cached to disk and restored instantly after a Home Assistant restart, and re-announced every minute so entities never look stale.
+- 🔢 All numeric sensors are rounded to 2 decimal places.
 - ⚡ Works out of the box with the Home Assistant Energy Dashboard.
 - 🩺 Built-in diagnostics support for easier troubleshooting.
 
@@ -76,7 +85,24 @@ The entities created depend on the customer category chosen during setup.
 | Levy Tax | Government levy applied on top of the energy charge | % |
 | Regular/High Consumer Service Charge | Fixed service charge for regular/high consumption | GHS |
 
-All sensors are grouped under a single **PURC Electricity Tariff** device and refresh automatically every 24 hours.
+### Water (optional)
+
+Created only if **Also track water tariffs** was enabled during setup.
+
+| Sensor | Description | Unit |
+| --- | --- | --- |
+| Water Tariff | Water rate (100 m³ reference) | GHS/m³ |
+| Water Service Charge | Fixed water service charge | GHS |
+| Water Levy | Levy applied on top of the water charge | % |
+
+### Other entities
+
+| Entity | Type | Description |
+| --- | --- | --- |
+| Last Updated | Sensor | Timestamp of the last successful tariff fetch |
+| Force Update | Button | Triggers an immediate refresh from the PURC website |
+
+All entities are grouped under a single **PURC Electricity Tariff** device, refresh automatically every 24 hours, and are re-announced every minute so they never look stale in between.
 
 ## Installation
 
@@ -106,7 +132,8 @@ Configuration is done entirely through the Home Assistant UI (no YAML needed):
 1. Go to **Settings → Devices & services → Add Integration**.
 2. Search for **PURC Ghana Tariff**.
 3. Select your customer category (`Residential`, `Non-Residential`, `SLT LV`, `SLT MV`, `SLT MV2`, `SLT HV`, or `SLT EV Chg`).
-4. Submit — the integration immediately fetches the current tariffs and creates the relevant sensors.
+4. Optionally, tick **Also track water tariffs** if you'd like water tariff sensors as well, then select your water customer category (`Residential`, `Non-Residential`, `Commercial`, `Sachet Water Producers`, `Bottled Water and Drinks`, `Industrial`, `Public Inst./Gov. Depts.`, `Public Stand Pipes`, `Ports and Harbours`, or `Bulk Supply`) on the next screen.
+5. Submit — the integration immediately fetches the current tariffs and creates the relevant sensors.
 
 You can add the integration multiple times with different customer categories if you need to track more than one tariff class.
 
@@ -152,6 +179,10 @@ pytest test/
 ```
 
 The test suite parses a captured HTML fixture ([test/fixtures/residential_100.html](test/fixtures/residential_100.html)) instead of making live requests, so it can run offline and in CI.
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for a full history of changes between releases.
 
 ## Disclaimer
 

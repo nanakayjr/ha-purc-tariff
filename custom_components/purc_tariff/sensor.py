@@ -19,12 +19,14 @@ from homeassistant.helpers.update_coordinator import (
 )
 
 from .const import (
-    DOMAIN,
-    DEVICE_NAME,
     CONF_CUSTOMER_TYPE,
+    CONF_TRACK_WATER,
+    DECIMAL_PRECISION,
+    DOMAIN,
 )
 
 from .coordinator import PURCCoordinator
+from .device import build_device_info
 
 
 
@@ -153,6 +155,49 @@ async def async_setup_entry(
         )
 
 
+    if entry.data.get(CONF_TRACK_WATER):
+
+        entities.extend(
+            [
+
+                PURCSensor(
+                    coordinator,
+                    entry,
+                    "water_tariff",
+                    "Water Tariff",
+                    "GHS/m\u00b3",
+                ),
+
+
+                PURCSensor(
+                    coordinator,
+                    entry,
+                    "water_service",
+                    "Water Service Charge",
+                    "GHS",
+                ),
+
+
+                PURCSensor(
+                    coordinator,
+                    entry,
+                    "water_levy",
+                    "Water Levy",
+                    "%",
+                ),
+
+            ]
+        )
+
+
+    entities.append(
+        PURCLastUpdatedSensor(
+            coordinator,
+            entry
+        )
+    )
+
+
     async_add_entities(
         entities
     )
@@ -198,26 +243,7 @@ class PURCSensor(
         )
 
 
-        self._attr_device_info = {
-
-            "identifiers":
-                {
-                    (
-                        DOMAIN,
-                        entry.entry_id
-                    )
-                },
-
-            "name":
-                DEVICE_NAME,
-
-            "manufacturer":
-                "PURC Ghana",
-
-            "model":
-                "Tariff Reckoner",
-
-        }
+        self._attr_device_info = build_device_info(entry)
 
 
 
@@ -225,6 +251,18 @@ class PURCSensor(
 
             self._attr_icon = (
                 "mdi:currency-usd"
+            )
+
+
+            self._attr_state_class = (
+                SensorStateClass.MEASUREMENT
+            )
+
+
+        elif unit == "GHS/m\u00b3":
+
+            self._attr_icon = (
+                "mdi:water"
             )
 
 
@@ -279,5 +317,43 @@ class PURCSensor(
 
         return round(
             value,
-            5
+            DECIMAL_PRECISION
         )
+
+
+class PURCLastUpdatedSensor(
+    CoordinatorEntity,
+    SensorEntity
+):
+
+
+    _attr_has_entity_name = True
+
+    _attr_name = "Last Updated"
+
+    _attr_icon = "mdi:clock-check-outline"
+
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+
+
+    def __init__(
+        self,
+        coordinator: PURCCoordinator,
+        entry: ConfigEntry,
+    ):
+
+        super().__init__(
+            coordinator
+        )
+
+        self._attr_unique_id = (
+            f"{entry.entry_id}_last_updated"
+        )
+
+        self._attr_device_info = build_device_info(entry)
+
+
+    @property
+    def native_value(self):
+
+        return self.coordinator.last_update_success_time

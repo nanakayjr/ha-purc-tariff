@@ -10,6 +10,7 @@ from .coordinator import PURCCoordinator
 
 PLATFORMS = [
     "sensor",
+    "button",
 ]
 
 
@@ -60,6 +61,9 @@ async def async_unload_entry(
 
         if coordinator is not None:
             coordinator.client.close()
+
+            if coordinator.water_client is not None:
+                coordinator.water_client.close()
 
         if not hass.data[DOMAIN]:
             hass.data.pop(DOMAIN)
